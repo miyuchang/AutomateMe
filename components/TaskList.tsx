@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task } from '../types';
-import { Trash2, Clock, CheckCircle2 } from 'lucide-react';
+import { X, Clock, CheckCircle2 } from 'lucide-react';
 
 interface TaskListProps {
   tasks: Task[];
@@ -9,18 +9,15 @@ interface TaskListProps {
 
 const formatDate = (timestamp: number) => {
   return new Intl.DateTimeFormat('zh-TW', {
-    month: 'short',
+    month: 'numeric',
     day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false
   }).format(new Date(timestamp));
 };
 
 const TaskList: React.FC<TaskListProps> = ({ tasks, onDelete }) => {
   if (tasks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-slate-400 animate-fade-in">
+      <div className="flex flex-col items-center justify-center py-16 text-slate-400 animate-fade-in w-full">
         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
           <CheckCircle2 size={32} className="text-slate-300" />
         </div>
@@ -31,42 +28,66 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onDelete }) => {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto mt-8 space-y-4 pb-20">
-      <div className="flex items-center justify-between px-2 mb-2">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-          願望清單 ({tasks.length})
-        </h3>
+    <div className="w-full mt-12 pb-20">
+      <div className="flex items-center justify-center mb-6">
+        <div className="h-1 w-24 bg-slate-200 rounded-full"></div>
       </div>
       
-      <div className="space-y-3">
+      {/* Sticky Note Wall Container */}
+      <div className="flex flex-wrap justify-center items-start gap-6 sm:gap-8 px-4">
         {tasks.map((task, index) => (
           <div
             key={task.id}
-            className="group relative bg-white p-5 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-200 animate-slide-up hover:-translate-y-0.5"
-            style={{ animationDelay: `${index * 50}ms` }}
+            className={`
+              relative group flex flex-col justify-between
+              w-full sm:w-64 min-h-[16rem] sm:min-h-[16rem]
+              p-6 shadow-lg hover:shadow-2xl hover:scale-105 hover:z-20
+              transition-all duration-300 ease-out cursor-default
+              ${task.color} text-slate-800
+              animate-fade-in
+            `}
+            style={{ 
+              transform: `rotate(${task.rotation}deg)`,
+              // Add a slight random top margin to break the grid further visually
+              marginTop: `${index % 2 === 0 ? '0px' : '20px'}`,
+              animationDelay: `${index * 50}ms`
+            }}
           >
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <p className="text-slate-800 text-lg leading-snug font-medium break-words">
-                  {task.content}
-                </p>
-                <div className="flex items-center mt-3 text-xs text-slate-400 gap-1.5">
-                  <Clock size={12} />
-                  <span>{formatDate(task.createdAt)}</span>
-                </div>
+            {/* Pin / Tape effect (Optional visual) */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-black/10 shadow-inner sm:block hidden"></div>
+
+            <div className="flex-1">
+              <p className="font-handwriting text-xl leading-relaxed font-medium break-words whitespace-pre-wrap" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", sans-serif' }}>
+                {task.content}
+              </p>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-black/5 flex justify-between items-end">
+              <div className="flex items-center text-xs text-slate-700/60 font-medium gap-1">
+                <Clock size={12} />
+                <span>{formatDate(task.createdAt)}</span>
               </div>
               
               <button
-                onClick={() => onDelete(task.id)}
-                className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg -mr-2 -mt-2"
-                aria-label="刪除任務"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task.id);
+                }}
+                className="
+                  p-2 -mr-2 -mb-2 text-slate-700/40 hover:text-red-600 hover:bg-red-500/10 
+                  rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100
+                "
+                aria-label="撕下便利貼"
+                title="完成並移除"
               >
-                <Trash2 size={18} />
+                <X size={20} />
               </button>
             </div>
             
-            {/* Decorative gradient line on the left */}
-            <div className="absolute left-0 top-4 bottom-4 w-1 bg-gradient-to-b from-primary-400 to-primary-600 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity" />
+            {/* Paper texture overlay (subtle) */}
+            <div className="absolute inset-0 bg-white opacity-[0.03] pointer-events-none"></div>
+            {/* Bottom edge curl shadow effect */}
+            <div className="absolute bottom-0 right-0 w-8 h-8 bg-gradient-to-tl from-black/10 to-transparent pointer-events-none rounded-tl-3xl"></div>
           </div>
         ))}
       </div>

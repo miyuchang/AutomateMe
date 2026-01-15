@@ -5,10 +5,25 @@ interface TaskFormProps {
   onAdd: (content: string) => void;
 }
 
+const PLACEHOLDERS = [
+  "想要自動化什麼無聊的任務？",
+  "有什麼繁複性的工作想丟出來？",
+  "有什麼事情必須做但好懶？",
+  "我想要一鍵就能得到...."
+];
+
 const TaskForm: React.FC<TaskFormProps> = ({ onAdd }) => {
   const [value, setValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +54,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ onAdd }) => {
             ref={inputRef}
             type="text"
             className="w-full bg-transparent pl-12 pr-14 py-4 text-lg text-slate-800 placeholder:text-slate-400 focus:outline-none rounded-xl"
-            placeholder="想要自動化什麼無聊的任務？"
+            placeholder={PLACEHOLDERS[placeholderIndex]}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onFocus={() => setIsFocused(true)}
