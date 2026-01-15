@@ -1,0 +1,5 @@
+{
+  "name": "AutomateMe",
+  "description": "一個用來追蹤你想自動化的無聊任務的願望清單應用程式，使用 Local Storage 進行儲存。",
+  "requestFramePermissions": []
+}
