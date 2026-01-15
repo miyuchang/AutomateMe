@@ -1,28 +1,41 @@
 import React from 'react';
 import { Task } from '../types';
-import { X, Clock, CheckCircle2 } from 'lucide-react';
+import { Clock, Loader2, X } from 'lucide-react';
 
 interface TaskListProps {
   tasks: Task[];
+  isLoading: boolean;
   onDelete: (id: string) => void;
 }
 
 const formatDate = (timestamp: number) => {
+  if (!timestamp) return '';
   return new Intl.DateTimeFormat('zh-TW', {
     month: 'numeric',
     day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
   }).format(new Date(timestamp));
 };
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, onDelete }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, isLoading, onDelete }) => {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 w-full animate-fade-in">
+        <Loader2 size={40} className="text-primary-500 animate-spin mb-4" />
+        <p className="text-slate-400 font-medium">正在讀取大家的願望...</p>
+      </div>
+    );
+  }
+
   if (tasks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-slate-400 animate-fade-in w-full">
         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle2 size={32} className="text-slate-300" />
+          <Clock size={32} className="text-slate-300" />
         </div>
         <p className="text-lg font-medium">目前空空如也！</p>
-        <p className="text-sm">還沒有列出無聊的任務。</p>
+        <p className="text-sm">還沒有列出無聊的任務，快來搶頭香。</p>
       </div>
     );
   }
@@ -50,13 +63,25 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onDelete }) => {
               transform: `rotate(${task.rotation}deg)`,
               // Add a slight random top margin to break the grid further visually
               marginTop: `${index % 2 === 0 ? '0px' : '20px'}`,
-              animationDelay: `${index * 50}ms`
+              animationDelay: `${Math.min(index * 50, 1000)}ms`
             }}
           >
             {/* Pin / Tape effect (Optional visual) */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-black/10 shadow-inner sm:block hidden"></div>
 
-            <div className="flex-1">
+            {/* Delete Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              className="absolute top-2 right-2 p-1.5 rounded-full bg-black/5 hover:bg-black/10 text-slate-600 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all duration-200 focus:opacity-100"
+              title="刪除"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="flex-1 overflow-hidden mt-2">
               <p className="font-handwriting text-xl leading-relaxed font-medium break-words whitespace-pre-wrap" style={{ fontFamily: '"Comic Sans MS", "Chalkboard SE", sans-serif' }}>
                 {task.content}
               </p>
@@ -67,21 +92,6 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onDelete }) => {
                 <Clock size={12} />
                 <span>{formatDate(task.createdAt)}</span>
               </div>
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(task.id);
-                }}
-                className="
-                  p-2 -mr-2 -mb-2 text-slate-700/40 hover:text-red-600 hover:bg-red-500/10 
-                  rounded-full transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100
-                "
-                aria-label="撕下便利貼"
-                title="完成並移除"
-              >
-                <X size={20} />
-              </button>
             </div>
             
             {/* Paper texture overlay (subtle) */}

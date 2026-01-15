@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Task } from '../types';
 
-const STORAGE_KEY = 'automate_me_tasks';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyWoamxuSZcoYiTmZW8adqqn6E2T64Yp2RWt9rW3mbRXsE5L684FFwTjVdBWCqLeA34Ug/exec';
 
 const STICKY_COLORS = [
   'bg-yellow-200', // Classic Yellow
@@ -12,51 +12,96 @@ const STICKY_COLORS = [
   'bg-orange-200', // Orange
 ];
 
+interface ApiTask {
+  id: string;
+  time: string;
+  content: string;
+  category: string;
+}
+
 export const useTasks = () => {
-  const [tasks, setTasks] = useState<Task[]>(() => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchTasks = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const item = window.localStorage.getItem(STORAGE_KEY);
-      if (!item) return [];
+      const response = await fetch(API_URL);
+      if (!response.ok) throw new Error('Network response was not ok');
       
-      const parsedTasks = JSON.parse(item);
+      const data: ApiTask[] = await response.json();
       
-      // Migration: Add color and rotation to old tasks if missing
-      return parsedTasks.map((t: any) => ({
-        ...t,
-        color: t.color || STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
-        rotation: t.rotation !== undefined ? t.rotation : (Math.random() * 6 - 3)
-      }));
+      // Transform API data to App data
+      // Newest is at the bottom of the sheet usually, so we reverse it to show newest first
+      const transformedTasks: Task[] = data.map((item, index) => {
+        // Use a deterministic way to generate color/rotation based on ID or content length
+        // so it doesn't flicker wildly on re-renders.
+        const seed = item.content.length + index;
+        return {
+          id: item.id, // Use the ID from backend
+          content: item.content,
+          createdAt: new Date(item.time).getTime(),
+          color: STICKY_COLORS[seed % STICKY_COLORS.length],
+          rotation: (seed % 10) - 5, // Random rotation between -5 and 5
+        };
+      }).reverse();
 
+      setTasks(transformedTasks);
     } catch (error) {
-      console.error("Error reading from localStorage", error);
-      return [];
+      console.error("Error fetching tasks:", error);
+    } finally {
+      setIsLoading(false);
     }
-  });
+  }, []);
 
+  // Initial load
   useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  const addTask = useCallback(async (content: string) => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      // Send 'create' action
+      await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ 
+          action: 'create',
+          content: content, 
+          category: 'general' 
+        })
+      });
     } catch (error) {
-      console.error("Error writing to localStorage", error);
+      console.warn("POST (create) request finished:", error);
+    } finally {
+      // Refresh the list
+      fetchTasks();
     }
-  }, [tasks]);
+  }, [fetchTasks]);
 
-  const addTask = useCallback((content: string) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      content,
-      createdAt: Date.now(),
-      // Randomly assign a pastel color
-      color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
-      // Random rotation between -3 and 3 degrees for organic look
-      rotation: Math.random() * 6 - 3, 
-    };
-    setTasks((prev) => [newTask, ...prev]);
-  }, []);
+  const deleteTask = useCallback(async (id: string) => {
+    if (!window.confirm("確定要刪除這張願望卡嗎？")) return;
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
-  }, []);
+    // Optimistic update: Remove it from UI immediately for better feel
+    setTasks(prev => prev.filter(t => t.id !== id));
 
-  return { tasks, addTask, deleteTask };
+    try {
+      // Send 'delete' action
+      await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ 
+          action: 'delete',
+          id: id 
+        })
+      });
+    } catch (error) {
+      console.warn("POST (delete) request finished:", error);
+      // If needed, we could revert the optimistic update here on error,
+      // but strictly following the "refresh after" pattern:
+    } finally {
+      // Sync with backend to ensure state is correct
+      fetchTasks();
+    }
+  }, [fetchTasks]);
+
+  return { tasks, isLoading, addTask, deleteTask, refreshTasks: fetchTasks };
 };
